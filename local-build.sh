@@ -19,4 +19,5 @@ while IFS=' ' read -r -d ' ' tag; do
 done <<< "$alias_tags "
 digest=$(< ./digestfile)
 
+export COSIGN_PASSWORD=""
 cosign sign -y --new-bundle-format=false --use-signing-config=false --key ./cosign.key "${image_registry}/${image_org}/${image_name}@${digest}"

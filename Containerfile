@@ -1,4 +1,4 @@
-FROM ghcr.io/ublue-os/kinoite-main@sha256:f32d086e81349c28ee541ffeb97a5e5aea4083a90a33b75729b25fd236575df1 AS builder
+FROM quay.io/fedora-ostree-desktops/kinoite@sha256:92ab91b3fbdd0f3e6e56d72c7503e73d7ac707579b61138fb2a87dec46a6613c AS builder
 
 RUN KERNEL_VERSION="$(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}\n" kernel-core | tail -n 1)" && \
     dnf5 -y install \
@@ -13,12 +13,13 @@ RUN KERNEL_VERSION="$(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}\n" kernel-core 
     kernel-devel-${KERNEL_VERSION} &&\
     dnf5 -y clean all
 
+RUN ln -sf /bin/true /usr/bin/depmod
+
 WORKDIR /src/snd_hda_macbookpro
 RUN git clone https://github.com/davidjo/snd_hda_macbookpro.git ./ && \
     KERNEL_VERSION="$(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}\n" kernel-core | tail -n 1)" && \
     ./install.cirrus.driver.sh -k ${KERNEL_VERSION} && \
-    cp /src/snd_hda_macbookpro/build/hda/codecs/cirrus/snd-hda-codec-cs8409.ko /tmp/ && \
-    xz -z /tmp/snd-hda-codec-cs8409.ko
+    cp /src/snd_hda_macbookpro/build/hda/codecs/cirrus/snd-hda-codec-cs8409.ko /tmp/
 
 WORKDIR /src/facetimehd-firmware
 RUN git clone https://github.com/patjak/facetimehd-firmware.git ./ && \
@@ -35,14 +36,15 @@ FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
 
-FROM ghcr.io/ublue-os/kinoite-main@sha256:f32d086e81349c28ee541ffeb97a5e5aea4083a90a33b75729b25fd236575df1
+FROM quay.io/fedora-ostree-desktops/kinoite@sha256:92ab91b3fbdd0f3e6e56d72c7503e73d7ac707579b61138fb2a87dec46a6613c
 
 RUN mkdir -p /usr/lib/modules-load.d /usr/lib/modprobe.d
 
-COPY --from=builder /tmp/snd-hda-codec-cs8409.ko.xz /tmp/
+COPY --from=builder /tmp/snd-hda-codec-cs8409.ko /tmp/
 RUN KERNEL_VERSION="$(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}\n" kernel-core | tail -n 1)" && \
+    rm -f /usr/lib/modules/${KERNEL_VERSION}/kernel/sound/hda/codecs/cirrus/snd-hda-codec-cs8409.ko.xz && \
     mkdir -p /usr/lib/modules/${KERNEL_VERSION}/extra/ && \
-    mv /tmp/snd-hda-codec-cs8409.ko.xz /usr/lib/modules/${KERNEL_VERSION}/extra/ && \
+    mv /tmp/snd-hda-codec-cs8409.ko /usr/lib/modules/${KERNEL_VERSION}/extra/ && \
     depmod -a -b /usr ${KERNEL_VERSION} && \
     echo "snd-hda-codec-cs8409" > /usr/lib/modules-load.d/apple-audio.conf
 
@@ -55,7 +57,8 @@ RUN KERNEL_VERSION="$(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}\n" kernel-core 
     mkdir -p /usr/lib/modules/${KERNEL_VERSION}/extra/facetimehd && \
     mv /tmp/facetimehd.ko /usr/lib/modules/${KERNEL_VERSION}/extra/facetimehd && \
     depmod -a -b /usr ${KERNEL_VERSION} && \
-    echo "facetimehd" > /usr/lib/modules-load.d/facetimehd.conf
+    echo "facetimehd" > /usr/lib/modules-load.d/facetimehd.conf && \
+    echo "blacklist bdc_pci" > /usr/lib/modprobe.d/blacklist-bdc_pci.conf
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
