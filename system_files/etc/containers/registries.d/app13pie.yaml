@@ -1,0 +1,3 @@
+docker:
+  ghcr.io/app13pie:
+    use-sigstore-attachments: true
