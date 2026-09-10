@@ -1,0 +1,1 @@
+kargs = ["usbcore.autosuspend=-1"]
