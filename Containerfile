@@ -1,4 +1,4 @@
-FROM quay.io/fedora-ostree-desktops/kinoite@sha256:e8b217bcb4db3e54537562bcfdaaea8597fc7a4561aba5e2980bda40a14fe11a AS builder
+FROM quay.io/fedora-ostree-desktops/kinoite:44 AS builder
 
 RUN KERNEL_VERSION="$(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}\n" kernel-core | tail -n 1)" && \
     dnf5 -y install \
@@ -25,7 +25,7 @@ FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
 
-FROM quay.io/fedora-ostree-desktops/kinoite@sha256:e8b217bcb4db3e54537562bcfdaaea8597fc7a4561aba5e2980bda40a14fe11a
+FROM quay.io/fedora-ostree-desktops/kinoite:44
 
 RUN mkdir -p /usr/lib/modules-load.d /usr/lib/modprobe.d
 
